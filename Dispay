@@ -1,0 +1,71 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+const int sensorPin = 2;          // Sensor inkopplad på digital pin D2
+float hjulOmkrets = 2.1;          // Hjulets omkrets i meter
+
+unsigned int varv = 0;            // Antal registrerade varv
+float stracka = 0.0;              // Total sträcka i meter
+float medelhastighet = 0.0;       // Medelhastighet i km/h
+
+unsigned long startTid = 0;       // Starttid för att mäta medelhastighet
+bool previousState = HIGH;        // Tidigare sensorstatus
+
+// Skapa LCD-objekt (adressen 0x27 är vanligast, annars testa 0x3F)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup() {
+  pinMode(sensorPin, INPUT);
+  Serial.begin(9600);
+  startTid = millis();
+
+  lcd.begin();           // Initiera LCD
+  lcd.backlight();       // Slå på bakgrundsbelysningen
+
+  lcd.setCursor(0, 0);
+  lcd.print("Startar...");
+  delay(1000);
+  lcd.clear();
+}
+
+void loop() {
+  bool currentState = digitalRead(sensorPin);
+
+  if (previousState == HIGH && currentState == LOW) {
+    varv++;
+    stracka = varv * hjulOmkrets;
+
+    unsigned long nuTid = millis();
+    float tidIH = (nuTid - startTid) / 3600000.0;
+
+    if (tidIH > 0) {
+      medelhastighet = (stracka / 1000.0) / tidIH;
+    }
+
+    // Skriv till seriell monitor
+    Serial.print("Varv: ");
+    Serial.print(varv);
+    Serial.print(" | Sträcka: ");
+    Serial.print(stracka, 2);
+    Serial.print(" m | Snitt: ");
+    Serial.print(medelhastighet, 2);
+    Serial.println(" km/h");
+
+    // Skriv till LCD-skärm
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Varv:");
+    lcd.print(varv);
+    lcd.print(" S:");
+    lcd.print(stracka, 0);  // Visar bara hela meter
+
+    lcd.setCursor(0, 1);
+    lcd.print("Snitt:");
+    lcd.print(medelhastighet, 1);
+    lcd.print("km/h");
+
+    delay(300); // Debounce
+  }
+
+  previousState = currentState;
+}
