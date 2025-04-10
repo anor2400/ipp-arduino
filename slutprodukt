@@ -1,0 +1,57 @@
+const int sensorPin = 2;              // Sensor inkopplad på digital pin D2
+float hjulOmkrets = 2.1;              // Hjulets omkrets i meter
+
+unsigned int varv = 0;                // Totalt antal varv
+float stracka = 0.0;                  // Total sträcka i meter
+float medelhastighet = 0.0;          // Medelhastighet i km/h
+
+const int MAX_PULSER = 100;           // Max antal varv som kan sparas
+unsigned long tidpunkter[MAX_PULSER]; // Tidsstämplar för varv
+int index = 0;
+int pulsAntal = 0;
+
+bool previousState = HIGH;
+
+void setup() {
+  pinMode(sensorPin, INPUT);
+  Serial.begin(9600);
+  Serial.println("Startar... Beräknar snitt över 15 sek.");
+}
+
+void loop() {
+  bool currentState = digitalRead(sensorPin);
+
+  if (previousState == HIGH && currentState == LOW) {
+    varv++;
+    stracka = varv * hjulOmkrets;
+
+    unsigned long nuTid = millis();
+    tidpunkter[index] = nuTid;
+    index = (index + 1) % MAX_PULSER;
+    if (pulsAntal < MAX_PULSER) pulsAntal++;
+
+    // Räkna antal varv de senaste 15 sekunderna
+    int aktivaVarv = 0;
+    for (int i = 0; i < pulsAntal; i++) {
+      if (nuTid - tidpunkter[i] <= 15000) {
+        aktivaVarv++;
+      }
+    }
+
+    float distans15s = aktivaVarv * hjulOmkrets;
+    medelhastighet = (distans15s / 15.0) * 3.6; // m/s → km/h
+
+    // Skriv ut till Serial Monitor
+    Serial.print("Varv: ");
+    Serial.print(varv);
+    Serial.print(" | Totalt: ");
+    Serial.print(stracka, 2);
+    Serial.print(" m | Snitt (15s): ");
+    Serial.print(medelhastighet, 2);
+    Serial.println(" km/h");
+
+    delay(300); // debounce
+  }
+
+  previousState = currentState;
+}
