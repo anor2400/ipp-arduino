@@ -1,0 +1,47 @@
+#include <Wire.h>
+
+#define LCD_ADDR 0x3E  // Justera om din I2C-scanner visar annan adress
+
+void setup() {
+  Wire.begin();         // Initiera I2C
+  delay(100);           // Vänta på skärmen
+
+  initLCD();            // Skicka init-kommandon
+  writeLine("Hej!", 0); // Skriv till rad 0
+}
+
+void loop() {
+  // Ingenting här än så länge
+}
+
+void initLCD() {
+  Wire.beginTransmission(LCD_ADDR);
+  Wire.write(0x00); // Kommandomode
+  Wire.write(0x38); // Funktion set
+  Wire.write(0x39); // Funktion set (ext mode)
+  Wire.write(0x14); // Intern osc
+  Wire.write(0x70); // Kontrast
+  Wire.write(0x56); // Power/Icon/Contrast
+  Wire.write(0x6C); // Follower control
+  delay(200);
+  Wire.write(0x38); // Funktion set
+  Wire.write(0x0C); // Display ON
+  Wire.write(0x01); // Clear
+  Wire.endTransmission();
+  delay(10);
+}
+
+void writeLine(const char* text, int line) {
+  byte addr = (line == 0) ? 0x80 : 0xC0; // Rad 0 eller 1
+  Wire.beginTransmission(LCD_ADDR);
+  Wire.write(0x00); // Kommandomode
+  Wire.write(addr); // Sätt cursor
+  Wire.endTransmission();
+
+  Wire.beginTransmission(LCD_ADDR);
+  Wire.write(0x40); // Datamode
+  while (*text) {
+    Wire.write(*text++);
+  }
+  Wire.endTransmission();
+}
