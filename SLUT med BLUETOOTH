@@ -1,0 +1,69 @@
+#include <SoftwareSerial.h>
+
+const int sensorPin = 4;              // Sensor inkopplad på digital pin D4
+float hjulOmkrets = 2.1;              // Hjulets omkrets i meter
+
+unsigned int varv = 0;                // Totalt antal varv
+float stracka = 0.0;                  // Total sträcka i meter
+float medelhastighet = 0.0;           // Medelhastighet i km/h
+
+unsigned long startTime = 0;
+unsigned long endTime = 0;
+float tid = 0.0;
+
+unsigned long debounceTime = 300;    // 300 ms debounce-tid
+unsigned long lastTime = 0;          // Senaste registreringen
+
+bool previousState = HIGH;
+
+SoftwareSerial bluetoothSerial(3, 2); // RX, TX för Bluetooth (HM-06 eller HM-10)
+
+void setup() {
+  pinMode(sensorPin, INPUT);
+  Serial.begin(9600);                  // Serial Monitor
+  bluetoothSerial.begin(9600);         // Bluetooth
+  Serial.println("Startar...");
+}
+
+void loop() {
+  bool currentState = digitalRead(sensorPin);
+  unsigned long currentTime = millis();
+
+  // Om sensorn går från HIGH till LOW och debounce-tiden har passerat
+  if (previousState == HIGH && currentState == LOW && (currentTime - lastTime >= debounceTime)) {
+    
+    varv++;
+    stracka = varv * hjulOmkrets;
+
+    endTime = millis();
+    tid = (endTime - startTime) / 1000.0;  // Tid i sekunder
+
+    if (tid > 0) {
+      medelhastighet = (stracka / tid) * 3.6;  // km/h
+    }
+
+    // Skriv ut till Serial Monitor
+    Serial.print("Varv: ");
+    Serial.print(varv);
+    Serial.print(" | Totalt: ");
+    Serial.print(stracka, 2);
+    Serial.print(" m | ");
+    Serial.print(medelhastighet, 2);
+    Serial.println(" km/h");
+
+    // Skicka data via Bluetooth
+    bluetoothSerial.print("Varv: ");
+    bluetoothSerial.print(varv);
+    bluetoothSerial.print(" | Totalt: ");
+    bluetoothSerial.print(stracka, 2);
+    bluetoothSerial.print(" m | ");
+    bluetoothSerial.print(medelhastighet, 2);
+    bluetoothSerial.println(" km/h");
+
+    // Spara senaste registreringstid och starta om tidtagningen
+    lastTime = currentTime;
+    startTime = millis();
+  }
+
+  previousState = currentState;
+}
